@@ -1,0 +1,261 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <title>Classic Snake 🐍</title>
+    <style>
+        /* CSS for Styling */
+        body {
+            background-color: #c2c2a3; /* Nokia-like screen color */
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            height: 100vh;
+            margin: 0;
+            font-family: 'Courier New', Courier, monospace;
+            overflow: hidden; /* Prevents scrolling on mobile */
+        }
+
+        h1 {
+            color: #333;
+            margin: 10px 0;
+        }
+        
+        #game-container {
+            position: relative; /* Needed for the overlay */
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+        }
+
+        #game-board {
+            background-color: #9e9e8e;
+            width: 90vw;
+            height: 90vw;
+            max-width: 400px;
+            max-height: 400px;
+            display: grid;
+            grid-template-columns: repeat(20, 1fr);
+            grid-template-rows: repeat(20, 1fr);
+            border: 10px solid #333;
+            box-shadow: 5px 5px 15px rgba(0,0,0,0.3);
+        }
+
+        #game-overlay {
+            position: absolute;
+            top: 10px; /* Aligns with border */
+            left: 10px; /* Aligns with border */
+            width: calc(100% - 20px);
+            height: calc(100% - 20px);
+            background-color: rgba(158, 158, 142, 0.8);
+            color: #333;
+            font-size: 24px;
+            font-weight: bold;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            text-align: center;
+        }
+
+        .snake { background-color: #333; border: 1px solid #9e9e8e; }
+        .food { background-color: #333; border-radius: 50%; }
+        
+        #score { font-size: 24px; margin-top: 10px; color: #333; }
+
+        /* Controls Styling */
+        #controls-container {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            margin-top: 15px;
+        }
+
+        #start-stop-btn {
+            background-color: #333;
+            color: #c2c2a3;
+            border: 2px solid #555;
+            border-radius: 10px;
+            padding: 10px 20px;
+            font-size: 18px;
+            cursor: pointer;
+            margin-bottom: 15px;
+            width: 150px;
+        }
+
+        #controls {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            grid-template-rows: repeat(3, 1fr);
+            gap: 10px;
+            width: 180px;
+        }
+
+        .control-btn {
+            width: 50px; height: 50px; background-color: #333; color: #c2c2a3;
+            border: 2px solid #555; border-radius: 10px; font-size: 24px;
+            display: flex; justify-content: center; align-items: center;
+            cursor: pointer; user-select: none;
+        }
+
+        #up { grid-area: 1 / 2 / 2 / 3; }
+        #left { grid-area: 2 / 1 / 3 / 2; }
+        #right { grid-area: 2 / 3 / 3 / 4; }
+        #down { grid-area: 3 / 2 / 4 / 3; }
+    </style>
+</head>
+<body>
+
+    <h1>Classic Snake</h1>
+    <div id="game-container">
+        <div id="game-board"></div>
+        <div id="game-overlay">Press Start to Play</div>
+        <div id="score">Score: 0</div>
+    </div>
+    
+    <div id="controls-container">
+        <button id="start-stop-btn">Start Game</button>
+        <div id="controls">
+            <div id="up" class="control-btn">▲</div>
+            <div id="left" class="control-btn">◀</div>
+            <div id="right" class="control-btn">▶</div>
+            <div id="down" class="control-btn">▼</div>
+        </div>
+    </div>
+
+    <script>
+        // DOM Elements
+        const gameBoard = document.getElementById('game-board');
+        const scoreDisplay = document.getElementById('score');
+        const startStopBtn = document.getElementById('start-stop-btn');
+        const gameOverlay = document.getElementById('game-overlay');
+
+        // Game Variables
+        const gridSize = 20;
+        let snake = [{ x: 10, y: 10 }];
+        let food = {};
+        let direction = 'right';
+        let score = 0;
+        let gameInterval;
+        let gameState = 'ready'; // 'ready', 'running', 'paused'
+
+        function main() {
+            if (gameState !== 'running') return;
+            update();
+            draw();
+        }
+
+        function update() {
+            if (checkCollision()) {
+                gameState = 'over';
+                clearInterval(gameInterval);
+                gameOverlay.style.display = 'flex';
+                gameOverlay.textContent = `Game Over! Score: ${score}`;
+                startStopBtn.textContent = 'Restart';
+                return;
+            }
+
+            const head = { ...snake[0] };
+            switch (direction) {
+                case 'up': head.y--; break;
+                case 'down': head.y++; break;
+                case 'left': head.x--; break;
+                case 'right': head.x++; break;
+            }
+            snake.unshift(head);
+
+            if (head.x === food.x && head.y === food.y) {
+                score++;
+                scoreDisplay.textContent = `Score: ${score}`;
+                placeFood();
+            } else {
+                snake.pop();
+            }
+        }
+
+        function draw() {
+            gameBoard.innerHTML = '';
+            snake.forEach(segment => {
+                const el = document.createElement('div');
+                el.style.gridRowStart = segment.y;
+                el.style.gridColumnStart = segment.x;
+                el.classList.add('snake');
+                gameBoard.appendChild(el);
+            });
+
+            const foodEl = document.createElement('div');
+            foodEl.style.gridRowStart = food.y;
+            foodEl.style.gridColumnStart = food.x;
+            foodEl.classList.add('food');
+            gameBoard.appendChild(foodEl);
+        }
+
+        function placeFood() {
+            let onSnake = true;
+            while (onSnake) {
+                food = {
+                    x: Math.floor(Math.random() * gridSize) + 1,
+                    y: Math.floor(Math.random() * gridSize) + 1
+                };
+                onSnake = snake.some(s => s.x === food.x && s.y === food.y);
+            }
+        }
+        
+        function checkCollision() {
+            const head = snake[0];
+            const hitWall = head.x < 1 || head.x > gridSize || head.y < 1 || head.y > gridSize;
+            const hitSelf = snake.slice(1).some(s => s.x === head.x && s.y === head.y);
+            return hitWall || hitSelf;
+        }
+        
+        function changeDirection(newDirection) {
+            if (gameState !== 'running') return;
+            const goingUp = direction === 'up', goingDown = direction === 'down';
+            const goingLeft = direction === 'left', goingRight = direction === 'right';
+
+            if (newDirection === 'up' && !goingDown) direction = 'up';
+            if (newDirection === 'down' && !goingUp) direction = 'down';
+            if (newDirection === 'left' && !goingRight) direction = 'left';
+            if (newDirection === 'right' && !goingLeft) direction = 'right';
+        }
+
+        function handleStartStop() {
+            if (gameState === 'ready' || gameState === 'paused') {
+                gameState = 'running';
+                startStopBtn.textContent = 'Pause';
+                gameOverlay.style.display = 'none';
+                gameInterval = setInterval(main, 200);
+            } else if (gameState === 'running') {
+                gameState = 'paused';
+                startStopBtn.textContent = 'Resume';
+                gameOverlay.textContent = 'Game Paused';
+                gameOverlay.style.display = 'flex';
+                clearInterval(gameInterval);
+            } else if (gameState === 'over') {
+                window.location.reload();
+            }
+        }
+
+        // --- Event Listeners ---
+        startStopBtn.addEventListener('click', handleStartStop);
+        document.addEventListener('keydown', e => {
+            switch (e.key) {
+                case 'ArrowUp': changeDirection('up'); break;
+                case 'ArrowDown': changeDirection('down'); break;
+                case 'ArrowLeft': changeDirection('left'); break;
+                case 'ArrowRight': changeDirection('right'); break;
+            }
+        });
+        document.getElementById('up').addEventListener('click', () => changeDirection('up'));
+        document.getElementById('down').addEventListener('click', () => changeDirection('down'));
+        document.getElementById('left').addEventListener('click', () => changeDirection('left'));
+        document.getElementById('right').addEventListener('click', () => changeDirection('right'));
+
+        // --- Initial Game Setup ---
+        placeFood();
+        draw(); // Draw initial state before starting
+    </script>
+</body>
+</html>
